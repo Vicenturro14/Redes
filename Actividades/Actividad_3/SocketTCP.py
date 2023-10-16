@@ -116,6 +116,7 @@ class SocketTCP:
         
         return communication_socket, communication_address
 
+
     def send(self, message : bytes) -> None:
         """Envía un mensaje en bytes al socket con el que se conectó"""
         
