@@ -46,3 +46,12 @@ client_socketTCP.send(message)
 # test 3
 message = "Mensaje de largo 19".encode()
 client_socketTCP.send(message)
+
+# Cierre de conexíon
+client_socketTCP.close()
+
+# Se verifica que la conexión fue cerrada
+if not client_socketTCP.other_side_address:
+    print("Conexión cerrada exitosamente")
+else:
+    print("No se cerró la conexión")

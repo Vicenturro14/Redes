@@ -5,8 +5,8 @@ from random import randint
 class SocketTCP:
     def __init__(self) -> None:
         self.socket_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.my_address = ()
-        self.other_side_address = ()
+        self.my_address = None
+        self.other_side_address = None
         self.seq_num = 0
         self.udp_buff_size = 64
         self.bytes_to_receive = 0
@@ -122,7 +122,7 @@ class SocketTCP:
 
     def send(self, message : bytes) -> None:
         """Envía un mensaje en bytes al socket con el que se conectó"""
-        
+
         # Se configura el timeout
         self.socket_udp.settimeout(TIMEOUT)
 
@@ -254,3 +254,60 @@ class SocketTCP:
         self.last_overflow = overflow
         return bytes_to_return
 
+    def close(self) -> None:
+        """Cierra la conexión con el socket remoto."""
+
+        # Se crea y manda el segmento para indicar el fin de la conexión.
+        fin_segment_dict = {
+            FIN : 1,
+            ACK : 0,
+            SYN : 0,
+            SEQ : self.seq_num,
+            DATA : b""
+        }
+        fin_segment = self.create_segment(fin_segment_dict)
+        self.socket_udp.sendto(fin_segment, self.other_side_address)
+
+        # Se espera un mensaje de fin de conexión y confirmación
+        received_segment, _ = self.socket_udp.recvfrom(self.udp_buff_size)
+        received_segment_dict = self.parse_segment(received_segment)
+        while received_segment_dict[FIN] != 1 or received_segment_dict[ACK] != 1 or received_segment_dict[SEQ] != self.seq_num + 1:
+            received_segment, _ = self.socket_udp.recvfrom(self.udp_buff_size)
+            received_segment_dict = self.parse_segment(received_segment)
+
+        # Se reutiliza el segmento recibido para enviar un segmento de confirmación
+        received_segment_dict[FIN] = 0
+        received_segment_dict[SEQ] += 1
+        acknowledge_segment = self.create_segment(received_segment_dict)
+        self.socket_udp.sendto(acknowledge_segment, self.other_side_address)
+        
+        # Se borra la dirección del socket remoto
+        self.other_side_address = None
+
+
+    def close_recv(self) -> None:
+        """Recibe una indicacíon de cierre de conexión y se encarga de cerrarla."""
+
+        # Se espera un mensaje de fin de conexión
+        received_segment, _ = self.socket_udp.recvfrom(self.udp_buff_size)
+        received_segment_dict = self.parse_segment(received_segment)
+        while received_segment_dict[FIN] != 1:
+            received_segment, _ = self.socket_udp.recvfrom(self.udp_buff_size)
+            received_segment_dict = self.parse_segment(received_segment)
+        
+        # Se reutiliza el segmento recibido.
+        received_segment_dict[ACK] = 1
+        received_segment_dict[SEQ] += 1
+        self.seq_num = received_segment_dict[SEQ]
+        finack_segment = self.create_segment(received_segment_dict)
+        self.socket_udp.sendto(finack_segment, self.other_side_address)
+
+        # Se espera el segmento de confirmación con número de secuencia adecuado.
+        received_segment, _ = self.socket_udp.recvfrom(self.udp_buff_size)
+        received_segment_dict = self.parse_segment(received_segment)
+        while received_segment_dict[ACK] != 1:
+            received_segment, _ = self.socket_udp.recvfrom(self.udp_buff_size)
+            received_segment_dict = self.parse_segment(received_segment)
+
+        # Se borra la dirección del socket remoto
+        self.other_side_address = None   
