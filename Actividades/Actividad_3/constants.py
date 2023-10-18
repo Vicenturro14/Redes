@@ -5,3 +5,4 @@ ACK = "ACK"
 SEQ = "SEQ"
 FIN = "FIN"
 DATA = "DATA"
+TIMEOUT = 5
