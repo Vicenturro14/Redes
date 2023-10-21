@@ -1,6 +1,12 @@
 import socket
-from constants import *
 from random import randint
+
+SEGMENT_SEPARATOR = b"|||"
+SYN = "SYN"
+ACK = "ACK"
+SEQ = "SEQ"
+FIN = "FIN"
+DATA = "DATA"
 
 class SocketTCP:
     def __init__(self) -> None:
@@ -12,6 +18,7 @@ class SocketTCP:
         self.bytes_to_receive = 0
         self.last_asigned_port = 8000
         self.last_overflow = b""
+        self.timeout = 5
 
     @staticmethod
     def parse_segment(segment : bytes) -> dict:
@@ -124,7 +131,7 @@ class SocketTCP:
         """Envía un mensaje en bytes al socket con el que se conectó"""
 
         # Se configura el timeout
-        self.socket_udp.settimeout(TIMEOUT)
+        self.socket_udp.settimeout(self.timeout)
 
         # Se crea el segmento inicial con el largo del mensaje.
         message_len = len(message)
@@ -155,6 +162,7 @@ class SocketTCP:
 
             except TimeoutError:
                 # Si se cumple el timeout se vuele a enviar el segmento
+                print("(debug) Posible pérdida, se cumplió timeout y no se recibió ACK. Se volverá a enviar el segmento")
                 continue
                 
         # Se envía el mensaje por partes de largo a lo más 16 bytes, con la metodología anterior.
@@ -185,6 +193,7 @@ class SocketTCP:
 
                 except TimeoutError:
                 # Si se cumple el timeout se vuele a enviar el segmento
+                    print("(debug) Posible pérdida, se cumplió timeout y no se recibió ACK. Se volverá a enviar el segmento")
                     continue
             
             sent_bytes += sent_data_len
@@ -238,6 +247,7 @@ class SocketTCP:
             # En caso de recibir un número de secuencia menor al esperado, 
             # se vuelve a enviar el último segmento de confirmación enviado.
             elif received_segment_dict[SEQ] < self.seq_num:
+                print("(debug) Posible pérdida, se recibió número de secuencia menor al esperado. Se volverá a enviar último ACK")
                 self.socket_udp.sendto(acknowledge_segment, self.other_side_address)
 
         # Si ya se recibieron todos los bytes del mensaje, simplemente se retorna
