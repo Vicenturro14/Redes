@@ -59,3 +59,27 @@ else:
     print(f"Siguiente salto para destino ('127.0.0.1', 8881): {check_routes('rutas_R3_v2.txt', ('127.0.0.1', 8881))}")
     print(f"Siguiente salto para destino ('127.0.0.1', 8882): {check_routes('rutas_R3_v2.txt', ('127.0.0.1', 8882))}")
     print(f"Siguiente salto para destino ('127.0.0.1', 8884): {check_routes('rutas_R3_v2.txt', ('127.0.0.1', 8884))}")
+
+    # Se reciben paquetes en un loop
+    while True:
+        package, sender_address = router_socket.recvfrom(4096)
+        print(package)
+        parsed_packet = parse_packet(package)
+        packet_dest_address = (parsed_packet["IP_direction"], parsed_packet["port"])
+        # Si el paquete es para este router, se imprime el contenido
+        if packet_dest_address == ROUTER_DIR:
+            print("Contenido paquete recibido:",parsed_packet["data"])
+        
+        # En caso contrario se redirecciona el paquete
+        else:
+            # Se obtiene la dirección del próximo salto
+            next_hop_dir = check_routes(ROUTES_TABLE_FILENAME, packet_dest_address)
+
+            # Si se encuentra dirección para próximo salto, se redirecciona a esa dirección
+            if next_hop_dir is not None:
+                print(f"Redirigiendo paquete {package} con destino final {packet_dest_address} desde {ROUTER_DIR} hacia {next_hop_dir}.")
+                router_socket.sendto(package, next_hop_dir)
+                
+            # Si no se encuentra dirección para el próximo salto, se ignora el mensaje
+            else:
+                print(f"No hay rutas hacia {packet_dest_address} para paquete {package}")
