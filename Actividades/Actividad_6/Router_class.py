@@ -55,11 +55,12 @@ class Router:
         data = IP_packet_dict["data"]
         return f"{ip},{port_str},{ttl_str},{id_str},{offset_str},{size_str},{flag_str},{data}".encode()
 
-    def check_routes(self, destination_address : tuple[str, int]) -> tuple[str, int] | None:
+    def check_routes(self, destination_address : tuple[str, int]) -> tuple[tuple[str, int], int] | None:
         """
-        Retorna la dirección (IP, puerto) del siguiente salto indicado por
-        la tabla de rutas para llegar a la dirección de destino recibida.
-        Retorna None si no se encuentra una respuesta en la tabla de rutas.
+        Retorna un par con la dirección (IP, puerto) y el MTU de la ruta del 
+        siguiente salto indicado por la tabla de rutas para llegar a la 
+        dirección de destino recibida. Retorna None si no se encuentra una 
+        respuesta en la tabla de rutas.
         """
         return self.routes_table.check_routes(destination_address)
         
@@ -86,7 +87,7 @@ class Router:
         packet = self.create_packet(parsed_packet)
 
         # Se obtiene la dirección del próximo salto
-        next_hop_address = self.check_routes(packet_dest_address)
+        next_hop_address, route_mtu = self.check_routes(packet_dest_address)
         
         # Si se encuentra dirección para próximo salto, se redirecciona
         if next_hop_address is not None:
@@ -101,5 +102,5 @@ class Router:
         """Envía el paquete IP recibido"""
         packet_dict = self.parse_packet(packet)
         dest_address = (packet_dict["IP_direction"], packet_dict["port"])
-        next_hop_address = self.check_routes(dest_address)
+        next_hop_address, route_mtu = self.check_routes(dest_address)
         self.socket.sendto(packet, next_hop_address)
