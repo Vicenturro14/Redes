@@ -22,10 +22,31 @@ def parse_create_packet_test():
     print("IP_packet_v1 == IP_packet_v2 ? {}".format(IP_packet_v1 == IP_packet_v2))
     print()
 
+def fragment_IP_packet_test():
+    """Testea el método de fragmentación de paquetes IP"""
+    print("===== Test de fragment_IP_packet =====")
+    # Fragmentación cualquiera
+    packet_1 = b"127.0.0.1,8885,010,00000347,00000000,00000005,0,hola!"
+    fragments_list_1 = Router.fragment_IP_packet(packet_1, 51)
+    expected_list_1 = [b"127.0.0.1,8885,010,00000347,00000000,00000003,1,hol",
+                       b"127.0.0.1,8885,010,00000347,00000003,00000002,0,a!"]
+    print(f"Fragmentación 1 correcta?: {fragments_list_1 == expected_list_1}")
+
+    # Caso que no se fragmenta
+    fragments_list_2 = Router.fragment_IP_packet(packet_1, 60)
+    expected_list_2 = [packet_1]
+    print(f"Fragmentación 2 correcta?: {fragments_list_2 == expected_list_2}")
+
+    # Caso que todos los fragmentos tienen flag 1
+    packet_2 = b"127.0.0.1,8885,010,00000347,00000000,00000005,1,hola!"
+    fragments_list_3 = Router.fragment_IP_packet(packet_2, 51)
+    expected_list_3 = [b"127.0.0.1,8885,010,00000347,00000000,00000003,1,hol",
+                       b"127.0.0.1,8885,010,00000347,00000003,00000002,1,a!"]
+    print(f"Fragmentación 3 correcta?: {fragments_list_3 == expected_list_3}")
 
 if __name__=="__main__":
     # Test de create_packet y parse_packet
     parse_create_packet_test()
-
+    fragment_IP_packet_test()
     # Tests de check_routes
     #check_routes_test()

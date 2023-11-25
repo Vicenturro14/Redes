@@ -1,5 +1,6 @@
 import socket
 from RoutesTable import RoutesTable
+import math
 
 class Router:
     def __init__(self, IP : str, port : int, routes_table_file_name : str) -> None:
@@ -104,3 +105,51 @@ class Router:
         dest_address = (packet_dict["IP_direction"], packet_dict["port"])
         next_hop_address, route_mtu = self.check_routes(dest_address)
         self.socket.sendto(packet, next_hop_address)
+
+    @staticmethod
+    def fragment_IP_packet(IP_packet : bytes, MTU : int) -> list[bytes]:
+        """
+        Fragmenta el paquete IP recibido para tener paquetes que sean de 
+        tamaño menor o igual al MTU. Retorna una lista con los fragmentos
+        de paquetes.
+        """
+        # Si el tamaño del paquete IP es menor o igual al MTU no se requiere 
+        # de fragmentación
+        original_packet_size = len(IP_packet)
+        if original_packet_size <= MTU:
+            return [IP_packet]
+        
+        original_packet_dict = Router.parse_packet(IP_packet)
+        headers_size = original_packet_size - original_packet_dict["size"]
+        new_data_area_size = MTU - headers_size
+        
+        fragments_num = math.ceil(original_packet_dict["size"]/new_data_area_size)
+
+        fragments_list = []
+        fragment_dict = original_packet_dict.copy()
+        for i in range(fragments_num):
+            # Se calcula el offset
+            offset = i * new_data_area_size
+            fragment_dict["offset"] = offset
+
+            # Se obtienen los datos de este fragmento
+            fragment_data = original_packet_dict["data"][offset : offset + new_data_area_size]
+            fragment_dict["data"] = fragment_data
+            fragment_dict["size"] = len(fragment_data)
+            
+            # Se obtiene la flag del fragmento
+            # Solo si la flag del paquete original es cero y este es el último
+            # fragmento, la flag del fragmento es 0
+            if original_packet_dict["flag"] == 0 and i == fragments_num - 1:
+                fragment_dict["flag"] = 0
+            else: 
+                fragment_dict["flag"] = 1
+
+            # Se crea el fragmento en bytes y se agrega a la lista
+            fragment = Router.create_packet(fragment_dict)
+            fragments_list.append(fragment)
+
+        return fragments_list
+        
+
+
