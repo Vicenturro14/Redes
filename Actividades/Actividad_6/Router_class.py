@@ -156,5 +156,41 @@ class Router:
 
         return fragments_list
         
+    @staticmethod
+    def reassemble_IP_packet(fragment_list : list[bytes]):
+        # Se crea una lista de los fragmentos paseados
+        parsed_fragment_list = [Router.parse_packet(fragment) for fragment in fragment_list]
+        
+        # Si hay solo un fragmento 
+        if len(parsed_fragment_list) == 1:
+            # Si el fragmento tiene offset o flag distinto a 0, faltan fragmentos
+            if parsed_fragment_list[0]["flag"] != 0 or parsed_fragment_list[0]["offset"] != 0:
+                return None
+            return fragment_list[0]
+        
+        # Se ordena la lista de fragmentos parseados por su offset
+        parsed_fragment_list.sort(key= lambda x : x["offset"])
 
+        # Si el primer fragmento no tiene offset 0 o el último fragmento tiene flag en 1, faltan fragmentos
+        if parsed_fragment_list[0]["offset"] != 0 or parsed_fragment_list[-1]["flag"] == 1:
+            return None
+        
+        # Se re-ensambla los fragmentos
+        bytes_sum = 0
+        reassambled_data = ""
+        for parsed_fragment in parsed_fragment_list:
+            # Si el offset no coincide con la cantidad de bytes re-ensamblados, faltan fragmentos
+            if parsed_fragment["offset"] != bytes_sum:
+                return None
+            
+            reassambled_data += parsed_fragment["data"]
+            bytes_sum += parsed_fragment["size"]
+
+        # Se reutilizan los headers de dirección IP, puerto, TTL, id y offset del primer fragmento  
+        reassambled_packet_dict = parsed_fragment_list[0]
+        reassambled_packet_dict["size"] = bytes_sum
+        reassambled_packet_dict["flag"] = 0
+        reassambled_packet_dict["data"] = reassambled_data
+        
+        return Router.create_packet(reassambled_packet_dict)
 

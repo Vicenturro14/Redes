@@ -43,10 +43,19 @@ def fragment_IP_packet_test():
     expected_list_3 = [b"127.0.0.1,8885,010,00000347,00000000,00000003,1,hol",
                        b"127.0.0.1,8885,010,00000347,00000003,00000002,1,a!"]
     print(f"Fragmentación 3 correcta?: {fragments_list_3 == expected_list_3}")
+    print()
+
+def reassemble_IP_packet_test():
+    print("===== Test de re-ensamble de reassemble_IP_packet =====")
+    packet_1 = b"127.0.0.1,8885,010,00000347,00000000,00000005,0,hola!"
+    mtu = 51
+    fragment_list = Router.fragment_IP_packet(packet_1, mtu)
+    reassambled_packet = Router.reassemble_IP_packet(fragment_list)
+    print(f"Re-ensamble de paquete IP 1 consistente?: {packet_1 == reassambled_packet}")
+    print()
 
 if __name__=="__main__":
     # Test de create_packet y parse_packet
     parse_create_packet_test()
     fragment_IP_packet_test()
-    # Tests de check_routes
-    #check_routes_test()
+    reassemble_IP_packet_test()    
