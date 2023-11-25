@@ -90,21 +90,26 @@ class Router:
         # Se obtiene la dirección del próximo salto
         next_hop_address, route_mtu = self.check_routes(packet_dest_address)
         
-        # Si se encuentra dirección para próximo salto, se redirecciona
-        if next_hop_address is not None:
-            print(f"Redirigiendo paquete {packet} con destino final {packet_dest_address} desde {self.dir} hacia {next_hop_address}.", end = "\n\n")
-            self.socket.sendto(packet, next_hop_address)
-            
-        # Si no se encuentra dirección para el próximo salto, se ignora el mensaje
-        else:
+        # Si no se encuentra dirección para próximo salto, se desecha
+        if next_hop_address is None:
             print(f"No hay rutas hacia {packet_dest_address} para paquete {packet}", end = "\n\n")
+            return    
+
+        # Fragmenta el paquete IP y envía cada fragmento
+        fragments_list = self.fragment_IP_packet(packet, route_mtu)
+        for fragment in fragments_list:
+            print(f"Redirigiendo paquete {fragment} con destino final {packet_dest_address} desde {self.dir} hacia {next_hop_address}.", end = "\n\n")
+            self.socket.sendto(fragment, next_hop_address)
+
 
     def send(self, packet : bytes):
         """Envía el paquete IP recibido"""
         packet_dict = self.parse_packet(packet)
         dest_address = (packet_dict["IP_direction"], packet_dict["port"])
         next_hop_address, route_mtu = self.check_routes(dest_address)
-        self.socket.sendto(packet, next_hop_address)
+        fragment_list = self.fragment_IP_packet(packet, route_mtu)
+        for fragment in fragment_list:    
+            self.socket.sendto(fragment, next_hop_address)
 
     @staticmethod
     def fragment_IP_packet(IP_packet : bytes, MTU : int) -> list[bytes]:
